@@ -1,0 +1,10 @@
+{
+  "name": "scryfall-search",
+  "private": true,
+  "scripts": {
+    "test": "node test_logic.mjs && node test_dom.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

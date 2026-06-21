@@ -2,7 +2,7 @@ import vm from "node:vm";
 import fs from "node:fs";
 import { JSDOM } from "jsdom";
 
-const src = fs.readFileSync("../scryfall-search/background.js", "utf8");
+const src = fs.readFileSync("./background.js", "utf8");
 
 // Build a DOM and a registry that maps fake targetElementIds -> nodes,
 // emulating browser.menus.getTargetElement().

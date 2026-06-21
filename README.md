@@ -1,20 +1,23 @@
 # Tests for Scryfall Search
 
 Two standalone Node scripts that validate the add-on's pure logic without a browser.
-They load `../scryfall-search/background.js` into a sandbox with a mocked `browser`
+They load `./background.js` into a sandbox with a mocked `browser`
 global, then exercise the functions directly.
 
 ## Run
 
 ```bash
-# from this tests/ folder
+# from the repo root
 
 # 1) URL building + helpers across all four query strategies (no dependencies)
 node test_logic.mjs
 
 # 2) DOM-level behavior: link-text extraction + selection-vs-link priority
-npm install jsdom        # one dependency
+npm install               # installs jsdom (pinned to a Node 18-compatible major)
 node test_dom.mjs
+
+# or run both:
+npm test
 ```
 
 ## What they cover

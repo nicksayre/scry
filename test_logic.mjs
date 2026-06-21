@@ -1,7 +1,7 @@
 import vm from "node:vm";
 import fs from "node:fs";
 
-const src = fs.readFileSync("../scryfall-search/background.js", "utf8");
+const src = fs.readFileSync("./background.js", "utf8");
 
 // Mock the WebExtension `browser` global so the top-level listener
 // registrations don't throw when the script is evaluated.
