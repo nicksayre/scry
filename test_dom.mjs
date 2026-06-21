@@ -10,6 +10,7 @@ const dom = new JSDOM(`<!DOCTYPE html><body>
   <a id="plain" href="/c/grave-pact">Grave Pact</a>
   <a id="nested" href="/c/x"><span><b>Smuggler's</b> Copter</span></a>
   <a id="img" href="/c/y"><img alt="Sol Ring" src="s.png"></a>
+  <a id="decorated" href="/c/z">Grave Pact (EDH)</a>
   <p id="loose">Some prose mentioning Rhystic Study here.</p>
 </body>`);
 const doc = dom.window.document;
@@ -17,7 +18,21 @@ const registry = {
   1: doc.querySelector("#plain"),
   2: doc.querySelector("#nested").querySelector("b"), // clicked the inner <b>
   3: doc.querySelector("#img").querySelector("img"),  // clicked the <img>
+  4: doc.querySelector("#decorated"),
 };
+
+// Selects the given element's text content as the page's live selection,
+// the way a user highlighting it with the mouse would.
+function selectNode(node) {
+  const range = doc.createRange();
+  range.selectNodeContents(node);
+  const sel = dom.window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+function clearSelection() {
+  dom.window.getSelection().removeAllRanges();
+}
 
 const noop = () => {};
 const sandbox = {
@@ -57,10 +72,24 @@ await check("readLinkText: nested markup", sandbox.readLinkText(2), "Smuggler's 
 // readLinkText: image-only link falls back to alt
 await check("readLinkText: image alt fallback", sandbox.readLinkText(3), "Sol Ring");
 
-// resolveQuery: selection beats everything
-await check("resolveQuery: selection wins over link",
+// resolveQuery: stale/unrelated selection elsewhere on the page does NOT
+// override a clicked link -- this is the bug being fixed. Firefox keeps
+// reporting the old selection in info.selectionText even though the user
+// clearly meant to act on the link they right-clicked.
+clearSelection();
+selectNode(doc.querySelector("#loose"));
+await check("resolveQuery: unrelated selection does not steal a link click",
   sandbox.resolveQuery({ selectionText: "Rhystic Study", linkUrl: "/c/grave-pact", targetElementId: 1, frameId: 0 }, tab),
-  "Rhystic Study");
+  "Grave Pact");
+
+// resolveQuery: selection wins only when it overlaps the clicked link itself
+// (e.g. highlighting just "Grave Pact" inside a decorated "Grave Pact (EDH)" link)
+clearSelection();
+selectNode(doc.querySelector("#decorated").firstChild);
+await check("resolveQuery: selection overlapping the link still overrides it",
+  sandbox.resolveQuery({ selectionText: "Grave Pact (EDH)", linkUrl: "/c/z", targetElementId: 4, frameId: 0 }, tab),
+  "Grave Pact (EDH)");
+clearSelection();
 
 // resolveQuery: link with no selection -> injected anchor text
 await check("resolveQuery: link anchor text",

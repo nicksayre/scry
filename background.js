@@ -39,17 +39,13 @@ browser.menus.onClicked.addListener(async (info, tab) => {
   });
 });
 
-// ----- 3. Decide what to search: selection > link text > URL slug -----
+// ----- 3. Decide what to search: link (unless selection overlaps it) > URL slug -----
 async function resolveQuery(info, tab) {
-  // (a) An explicit selection always wins. Covers unlinked card names, and lets
-  //     you override a link's text by highlighting just the part you want.
-  if (info.selectionText && info.selectionText.trim()) {
-    return info.selectionText.replace(/\s+/g, " ").trim();
-  }
-
-  // (b) Otherwise, if it's a link, read its anchor text. We inject readLinkText
-  //     into the exact frame clicked; running as a content script lets it call
-  //     menus.getTargetElement().
+  // (a) A link is the primary signal. Resolve in-page so readLinkText can check
+  //     whether any current selection actually overlaps the clicked link —
+  //     Firefox does not clear a page selection just because you right-click
+  //     a different, unrelated link, so info.selectionText can be stale text
+  //     that has nothing to do with the link you clicked.
   if (info.linkUrl && tab) {
     try {
       const results = await browser.scripting.executeScript({
@@ -64,6 +60,12 @@ async function resolveQuery(info, tab) {
     }
   }
 
+  // (b) Plain selection: either there's no link (selection-only context), or
+  //     injection failed/was blocked (reader view, PDF viewer, about: pages).
+  if (info.selectionText && info.selectionText.trim()) {
+    return info.selectionText.replace(/\s+/g, " ").trim();
+  }
+
   // (c) Last-ditch fallback: derive a name from the link URL itself.
   if (info.linkUrl) return lastPathSegment(info.linkUrl);
 
@@ -74,8 +76,29 @@ async function resolveQuery(info, tab) {
 // Self-contained: may use browser.menus.getTargetElement + the DOM, but cannot
 // reference anything from this file's scope.
 function readLinkText(targetElementId) {
-  let el = browser.menus.getTargetElement(targetElementId);
+  const target = browser.menus.getTargetElement(targetElementId);
+  let el = target;
   while (el && el.nodeName !== "A") el = el.parentElement;
+
+  // An explicit selection overrides the link's text only if it actually
+  // overlaps the clicked <a> (e.g. you highlighted just "Grave Pact" inside
+  // a decorated link reading "Grave Pact (EDH)"). A selection sitting
+  // elsewhere on the page — left over from before you right-clicked this
+  // link — does not count, even though Firefox still reports it.
+  const win = target && target.ownerDocument && target.ownerDocument.defaultView;
+  const sel = win && typeof win.getSelection === "function" ? win.getSelection() : null;
+  const selectionText = sel ? sel.toString().replace(/\s+/g, " ").trim() : "";
+  if (el && selectionText && sel.rangeCount > 0) {
+    let overlaps = false;
+    for (let i = 0; i < sel.rangeCount; i++) {
+      if (sel.getRangeAt(i).intersectsNode(el)) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (overlaps) return selectionText;
+  }
+
   if (!el) return "";
   let text = (el.textContent || "").replace(/\s+/g, " ").trim();
   if (!text) {
