@@ -17,7 +17,9 @@
     "scripts": ["background.js"]
   },
   "icons": {
-    "48": "icons/icon-48.png",
-    "96": "icons/icon-96.png"
+    "16": "icons/scry-icon.svg",
+    "32": "icons/scry-icon.svg",
+    "48": "icons/scry-icon.svg",
+    "96": "icons/scry-icon.svg"
   }
 }
