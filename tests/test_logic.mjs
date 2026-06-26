@@ -1,7 +1,10 @@
 import vm from "node:vm";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const src = fs.readFileSync("./background.js", "utf8");
+const here = path.dirname(fileURLToPath(import.meta.url));
+const src = fs.readFileSync(path.join(here, "../background.js"), "utf8");
 
 // Mock the WebExtension `browser` global so the top-level listener
 // registrations don't throw when the script is evaluated.
